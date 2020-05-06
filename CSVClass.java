@@ -24,22 +24,34 @@ class NationData{
 
 class NationData_Final{
     private int incomeCount;
-    private int[][] virusNewsCount;
+    private float[] virusNewsCount;
+    private int[] newsCount;
+
 
     public NationData_Final(int incomeCount){
         this.incomeCount = incomeCount;
-        this.virusNewsCount = new int[64][3];
+        this.virusNewsCount = new float[64];
         for(int i=0;i<64;i++){
-            for(int j=0;j<3;j++){
-                this.virusNewsCount[i][j]=0;
-            }
+            this.virusNewsCount[i]=0;
+        }
+        this.newsCount = new int[64];
+        for(int i=0;i<64;i++){
+            this.newsCount[i]=0;
         }
     }
 
+    public void divide(){
+        for(int i=0;i<64;i++){
+            if(this.newsCount[i]==0){
+                continue;
+            }
+            this.virusNewsCount[i]/=this.newsCount[i];
+        }
+    }
 
-
-    public NationData_Final addVirusNewsCount(int virusNum,int sentiment){
-        this.virusNewsCount[virusNum][sentiment]++;
+    public NationData_Final addVirusNewsCount(int virusNum,float sentiment){
+        this.virusNewsCount[virusNum]+=sentiment;
+        this.newsCount[virusNum]++;
         return this;
     }
     public NationData_Final addIncomeCount(int count){
@@ -47,7 +59,7 @@ class NationData_Final{
         return this;
     }
 
-    public int[][] getVirusNewsCount(){
+    public float[] getVirusNewsCount(){
         return this.virusNewsCount;
     }
 
@@ -218,10 +230,14 @@ public class CSVClass {
 
 
             String nationIndex[] = new String[nationNameMap.size()];
+            Map<String,Integer> nationData = new TreeMap<>();
+            for(String s : nationNameMap.keySet()){
+                nationData.put(nationNameMap.get(s).replaceAll("[(,),\",“,•,—,-,®,[,],™,»]", ""),1);
+            }
 
             int index = 0;
-            for(String s : nationNameMap.keySet()){
-                nationIndex[index++]=nationNameMap.get(s);
+            for(String s : nationData.keySet()){
+                nationIndex[index++]=s;
             }
 
             Map<Integer,Map<String,NationData_Final>> finalNationIncomingAndNewsData = new TreeMap<>();
@@ -241,7 +257,7 @@ public class CSVClass {
                             //System.out.println(fileName.substring(4,12)+"란 데이터 존재");
                             if(finalNationIncomingAndNewsData.get(atoi(fileName.substring(4,12))).containsKey(nationNameAndNews.get(fileName).get(i))&&virusIndex.containsKey(newsWithVirus.get(fileName.substring(0,17)))){
                                 //System.out.println(fileName+" - "+newsSentimentMap.get(fileName)+" 나라: "+nationNameAndNews.get(fileName).get(i));
-                                finalNationIncomingAndNewsData.get(atoi(fileName.substring(4,12))).get(nationNameAndNews.get(fileName).get(i)).addVirusNewsCount(virusIndex.get(newsWithVirus.get(fileName.substring(0,17))),newsSentimentMap.get(fileName)+1);
+                                finalNationIncomingAndNewsData.get(atoi(fileName.substring(4,12))).get(nationNameAndNews.get(fileName).get(i)).addVirusNewsCount(virusIndex.get(newsWithVirus.get(fileName.substring(0,17))),newsSentimentMap.get(fileName));
                             }
                         }
 
@@ -249,6 +265,12 @@ public class CSVClass {
                 }
             }
 
+
+            for(int date: finalNationIncomingAndNewsData.keySet()){
+                for(String nation:finalNationIncomingAndNewsData.get(date).keySet()){
+                    finalNationIncomingAndNewsData.get(date).get(nation).divide();
+                }
+            }
 
 
 
@@ -259,38 +281,34 @@ public class CSVClass {
 
             String savePoint = "C:\\Users\\근무지원대\\Desktop\\새 폴더 (3)\\corona_contest_data_0406\\시간_나라_뉴스_인구분석.csv";
             bufWriter = Files.newBufferedWriter(Paths.get(savePoint));
-            bufWriter.write("시간");
+            bufWriter.write("date");
             bufWriter.write(",");
-            bufWriter.write("나라명_정보");
-            bufWriter.write(",");
+            for(int i=0;i<nationIndex.length;i++){
+                bufWriter.write(nationIndex[i]+"");
+                bufWriter.write(",");
+            }
             bufWriter.newLine();
 
             for(Integer date : finalNationIncomingAndNewsData.keySet()){
                 bufWriter.write(date+"");
                 bufWriter.write(",");
-                bufWriter.write("[");
-                for(String nation : finalNationIncomingAndNewsData.get(date).keySet()){
-                    if(nation==""||nation==null){
-                        continue;
-                    }
-                    bufWriter.write(nation+":"+finalNationIncomingAndNewsData.get(date).get(nation).getIncomeCount());
-                    bufWriter.write("[");
-                    int tmp[][] = finalNationIncomingAndNewsData.get(date).get(nation).getVirusNewsCount();
-                    for(int i =0;i<64;i++){
+                for(int i=0;i<nationIndex.length;i++){
+                    if(finalNationIncomingAndNewsData.get(date).containsKey(nationIndex[i])){
                         bufWriter.write("[");
-                        for(int j=0;j<3;j++){
-                            bufWriter.write(tmp[i][j]+"");
-                            if(j!=2){
-                                bufWriter.write("$");
+                        bufWriter.write(finalNationIncomingAndNewsData.get(date).get(nationIndex[i]).getIncomeCount()+":");
+                        bufWriter.write("[");
+                        float tmp[] = finalNationIncomingAndNewsData.get(date).get(nationIndex[i]).getVirusNewsCount();
+                        for(int j =0;j<64;j++){
+                            bufWriter.write(tmp[j]+"");
+                            if(j!=63){
+                                bufWriter.write(",");
                             }
                         }
                         bufWriter.write("]");
-                        if(i!=63){
-                            bufWriter.write("$");
-                        }
                     }
-                    bufWriter.write("]");
-                    bufWriter.write(",");
+                    if(i!=nationIndex.length-2){
+                        bufWriter.write(",");
+                    }
                 }
                 bufWriter.newLine();
             }
